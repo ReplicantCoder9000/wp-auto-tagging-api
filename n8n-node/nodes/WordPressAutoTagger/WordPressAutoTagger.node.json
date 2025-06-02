@@ -1,0 +1,25 @@
+{
+  "node": "n8n-nodes-wordpress-auto-tagger.WordPressAutoTagger",
+  "nodeVersion": "1.0.0",
+  "codex": {
+    "categories": ["Content Management", "AI", "WordPress"],
+    "subcategories": {
+      "Content Management": ["Content Processing"],
+      "AI": ["Content Analysis"],
+      "WordPress": ["Post Management"]
+    },
+    "resources": {
+      "primaryDocumentation": [
+        {
+          "url": "https://github.com/your-org/wp-auto-tagging-api/blob/main/docs/API_REFERENCE.md"
+        }
+      ],
+      "credentialDocumentation": [
+        {
+          "url": "https://github.com/your-org/wp-auto-tagging-api/blob/main/docs/SETUP_GUIDE.md"
+        }
+      ]
+    },
+    "alias": ["wordpress", "auto-tag", "ai-tagging", "content-tagging"]
+  }
+}

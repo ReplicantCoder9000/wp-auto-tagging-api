@@ -1,0 +1,6 @@
+Timestamp,Post ID,WordPress URL,Assigned Tags,Processing Time (ms),AI Retries,Status,Error Code,Error Message,Request ID
+2024-01-15T10:30:15Z,123,https://sportssite.com,"Sports, Football, NFL",1250,0,success,,,req_abc123
+2024-01-15T10:31:22Z,124,https://sportssite.com,,2100,2,error,AI_SERVICE_UNAVAILABLE,AI service is temporarily unavailable,req_def456
+2024-01-15T10:32:45Z,125,https://sportssite.com,"Basketball, NBA, Lakers",980,0,success,,,req_ghi789
+2024-01-15T10:33:12Z,126,https://sportssite.com,,1500,1,error,WORDPRESS_AUTH_FAILED,Invalid WordPress credentials,req_jkl012
+2024-01-15T10:34:30Z,127,https://sportssite.com,"Tennis, Wimbledon, Championship",1100,0,success,,,req_mno345

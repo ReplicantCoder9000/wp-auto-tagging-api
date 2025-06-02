@@ -1,0 +1,45 @@
+name = "wp-auto-tagging-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (non-sensitive)
+[vars]
+ENVIRONMENT = "production"
+MAX_RETRIES = "10"
+CACHE_TTL = "600"
+CIRCUIT_BREAKER_THRESHOLD = "5"
+CIRCUIT_BREAKER_TIMEOUT = "60000"
+
+# Secrets (sensitive data - set via CLI or dashboard)
+# wrangler secret put CHATWITH_API_KEY
+# wrangler secret put CHATWITH_CHATBOT_ID
+# wrangler secret put GOOGLE_SHEETS_API_KEY
+# wrangler secret put GOOGLE_SHEETS_ID
+
+# Worker configuration
+[build]
+command = ""
+
+# Route configuration (update with your domain)
+[[routes]]
+pattern = "api.processfy.ai/api/auto-tag"
+zone_name = "processfy.ai"
+
+# Limits and performance
+[limits]
+cpu_ms = 50000
+
+# Development configuration
+[env.development]
+name = "wp-auto-tagging-api-dev"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+
+# Staging configuration
+[env.staging]
+name = "wp-auto-tagging-api-staging"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"

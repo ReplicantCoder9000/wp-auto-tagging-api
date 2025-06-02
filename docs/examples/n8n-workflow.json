@@ -1,0 +1,409 @@
+{
+  "name": "WordPress Auto-Tagging",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://yoursite.com/wp-json/wp/v2/posts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "status",
+                "value": "publish"
+              },
+              {
+                "name": "per_page",
+                "value": "10"
+              }
+            ]
+          }
+        }
+      },
+      "id": "wordpress-trigger",
+      "name": "WordPress Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        240,
+        300
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "wp-credentials",
+          "name": "WordPress API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.tags.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            },
+            {
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "publish",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "caseSensitive": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-posts",
+      "name": "Filter Posts Needing Tags",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.processfy.ai/api/auto-tag",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"wp_url\": \"https://yoursite.com\",\n  \"wp_auth\": \"{{ $credentials.wpAuth }}\",\n  \"post_id\": {{ $json.id }},\n  \"title\": \"{{ $json.title.rendered }}\",\n  \"content\": \"{{ $json.content.rendered.substring(0, 500) }}\",\n  \"is_live\": \"yes\",\n  \"tags\": \"\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "auto-tag-api",
+      "name": "Call Auto-Tagging API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-response",
+      "name": "Check API Response",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "spreadsheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ new Date().toISOString() }}",
+            "Post ID": "={{ $('Call Auto-Tagging API').item.json.post_id }}",
+            "WordPress URL": "https://yoursite.com",
+            "Assigned Tags": "={{ $('Call Auto-Tagging API').item.json.assigned_tags.join(', ') }}",
+            "Processing Time (ms)": "={{ $('Call Auto-Tagging API').item.json.processing_time_ms }}",
+            "AI Retries": "={{ $('Call Auto-Tagging API').item.json.ai_retries || 0 }}",
+            "Status": "success",
+            "Error Code": "",
+            "Error Message": "",
+            "Request ID": "={{ $('Call Auto-Tagging API').item.json.request_id || '' }}"
+          },
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Post ID",
+              "displayName": "Post ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "WordPress URL",
+              "displayName": "WordPress URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Assigned Tags",
+              "displayName": "Assigned Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Processing Time (ms)",
+              "displayName": "Processing Time (ms)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "AI Retries",
+              "displayName": "AI Retries",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Error Code",
+              "displayName": "Error Code",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Error Message",
+              "displayName": "Error Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Request ID",
+              "displayName": "Request ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-success",
+      "name": "Log Success to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [
+        1120,
+        100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "spreadsheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ new Date().toISOString() }}",
+            "Post ID": "={{ $('WordPress Posts').item.json.id }}",
+            "WordPress URL": "https://yoursite.com",
+            "Assigned Tags": "",
+            "Processing Time (ms)": "",
+            "AI Retries": "",
+            "Status": "error",
+            "Error Code": "={{ $('Call Auto-Tagging API').item.json.error_code }}",
+            "Error Message": "={{ $('Call Auto-Tagging API').item.json.message }}",
+            "Request ID": "={{ $('Call Auto-Tagging API').item.json.request_id }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "log-error",
+      "name": "Log Error to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [
+        1120,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@yoursite.com",
+        "toEmail": "admin@yoursite.com",
+        "subject": "Auto-Tagging Error Alert",
+        "text": "=Auto-tagging failed for post ID {{ $('WordPress Posts').item.json.id }}:\n\nTitle: {{ $('WordPress Posts').item.json.title.rendered }}\nError: {{ $('Call Auto-Tagging API').item.json.error_code }}\nMessage: {{ $('Call Auto-Tagging API').item.json.message }}\nRequest ID: {{ $('Call Auto-Tagging API').item.json.request_id }}\n\nPlease check the API status and WordPress configuration.",
+        "options": {}
+      },
+      "id": "send-error-alert",
+      "name": "Send Error Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1340,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credentials",
+          "name": "SMTP Email"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WordPress Posts": {
+      "main": [
+        [
+          {
+            "node": "Filter Posts Needing Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Posts Needing Tags": {
+      "main": [
+        [
+          {
+            "node": "Call Auto-Tagging API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Auto-Tagging API": {
+      "main": [
+        [
+          {
+            "node": "Check API Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check API Response": {
+      "main": [
+        [
+          {
+            "node": "Log Success to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Error to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "your-n8n-instance-id"
+  },
+  "id": "wordpress-auto-tagging-workflow",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "wordpress-automation",
+      "name": "WordPress Automation"
+    }
+  ]
+}

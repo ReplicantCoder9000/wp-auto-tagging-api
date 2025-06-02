@@ -1,0 +1,46 @@
+{
+  "name": "wp-auto-tagging-api",
+  "version": "1.0.0",
+  "description": "WordPress Auto-Tagging API built on Cloudflare Workers with AI-powered tag generation",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
+    "tail": "wrangler tail",
+    "test": "jest",
+    "lint": "eslint src/",
+    "format": "prettier --write src/"
+  },
+  "keywords": [
+    "wordpress",
+    "auto-tagging",
+    "ai",
+    "cloudflare-workers",
+    "rest-api",
+    "chatwith",
+    "automation"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240512.0",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5",
+    "wrangler": "^3.57.0"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/wp-auto-tagging-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/wp-auto-tagging-api/issues"
+  },
+  "homepage": "https://github.com/your-username/wp-auto-tagging-api#readme"
+}
