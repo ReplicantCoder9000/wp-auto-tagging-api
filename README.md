@@ -14,7 +14,7 @@ A high-performance, production-ready Cloudflare Worker that automatically genera
 
 ```bash
 # Clone and setup
-git clone <your-repo-url>
+git clone https://github.com/ReplicantCoder9000/wp-auto-tagging-api.git
 cd wp-auto-tagging-api
 npm install
 
@@ -614,7 +614,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ```bash
 # Clone repository
-git clone https://github.com/your-username/wp-auto-tagging-api.git
+git clone https://github.com/ReplicantCoder9000/wp-auto-tagging-api.git
 cd wp-auto-tagging-api
 
 # Install dependencies
