@@ -1,0 +1,586 @@
+{
+  "name": "WordPress Auto-Tagging - Optimized Cloudflare Worker",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "spreadsheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "id"
+        },
+        "options": {
+          "range": "A:J",
+          "headerRow": true
+        }
+      },
+      "id": "read-input-sheet",
+      "name": "Read Input Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [
+        240,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.wp_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "leftValue": "={{ $json.post_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "leftValue": "={{ $json.is_live }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "caseSensitive": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-valid-rows",
+      "name": "Filter Valid Rows",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "split-in-batches",
+      "name": "SplitInBatches 1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://wp-auto-tagging-api.YOUR_SUBDOMAIN.workers.dev/api/auto-tag",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"wp_url\": \"{{ $json.wp_url }}\",\n  \"wp_auth\": \"{{ $json.wp_auth }}\",\n  \"post_id\": {{ parseInt($json.post_id) }},\n  \"title\": \"{{ $json.title || '' }}\",\n  \"content\": \"{{ $json.content || '' }}\",\n  \"league\": \"{{ $json.league || '' }}\",\n  \"home_team\": \"{{ $json.home_team || '' }}\",\n  \"away_team\": \"{{ $json.away_team || '' }}\",\n  \"is_live\": \"{{ $json.is_live }}\",\n  \"tags\": \"{{ $json.tags || '' }}\"\n}",
+        "options": {
+          "timeout": 45000,
+          "retry": {
+            "enabled": true,
+            "maxTries": 3,
+            "waitBetween": 2000
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http-worker-request",
+      "name": "HTTP Worker Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        900,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cloudflare-worker-api-key",
+          "name": "Cloudflare Worker API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-worker-response",
+      "name": "IF Success/Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "spreadsheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_RESULTS_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ new Date().toISOString() }}",
+            "Post ID": "={{ $('SplitInBatches 1').item.json.post_id }}",
+            "WordPress URL": "={{ $('SplitInBatches 1').item.json.wp_url }}",
+            "Assigned Tags": "={{ $json.assigned_tags ? $json.assigned_tags.join(', ') : '' }}",
+            "Created Tags": "={{ $json.created_tags ? $json.created_tags.join(', ') : '' }}",
+            "Processing Time (ms)": "={{ $json.processing_time_ms || 0 }}",
+            "AI Retries": "={{ $json.ai_retries || 0 }}",
+            "Status": "success",
+            "Error Code": "",
+            "Request ID": "={{ $json.request_id || '' }}"
+          },
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Post ID",
+              "displayName": "Post ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "WordPress URL",
+              "displayName": "WordPress URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Assigned Tags",
+              "displayName": "Assigned Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Created Tags",
+              "displayName": "Created Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Processing Time (ms)",
+              "displayName": "Processing Time (ms)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "AI Retries",
+              "displayName": "AI Retries",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Error Code",
+              "displayName": "Error Code",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Request ID",
+              "displayName": "Request ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "update-success-results",
+      "name": "Update Success Results",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [
+        1340,
+        100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "spreadsheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_RESULTS_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ new Date().toISOString() }}",
+            "Post ID": "={{ $('SplitInBatches 1').item.json.post_id }}",
+            "WordPress URL": "={{ $('SplitInBatches 1').item.json.wp_url }}",
+            "Assigned Tags": "",
+            "Created Tags": "",
+            "Processing Time (ms)": "={{ $json.processing_time_ms || 0 }}",
+            "AI Retries": "={{ $json.ai_retries || 0 }}",
+            "Status": "error",
+            "Error Code": "={{ $json.error_code || 'UNKNOWN_ERROR' }}",
+            "Request ID": "={{ $json.request_id || '' }}"
+          }
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "update-error-results",
+      "name": "Update Error Results",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [
+        1340,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "rate-limit-delay",
+      "name": "Rate Limit Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log processing status\nconst currentBatch = $('SplitInBatches 1').context;\nconst totalItems = currentBatch.totalItems;\nconst currentIndex = currentBatch.currentIndex;\nconst progress = Math.round((currentIndex / totalItems) * 100);\n\nconsole.log(`Processing batch ${currentIndex}/${totalItems} (${progress}%)`);\n\n// Pass through the data\nreturn $input.all();"
+      },
+      "id": "log-progress",
+      "name": "Log Progress",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('SplitInBatches 1').context.done }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-batch-complete",
+      "name": "Check Batch Complete",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@yoursite.com",
+        "toEmail": "admin@yoursite.com",
+        "subject": "WordPress Auto-Tagging Batch Complete",
+        "text": "=WordPress auto-tagging batch processing has completed.\n\nTotal items processed: {{ $('SplitInBatches 1').context.totalItems }}\nWorkflow execution ID: {{ $workflow.id }}\nCompleted at: {{ new Date().toISOString() }}\n\nPlease check your Google Sheets for detailed results.",
+        "options": {}
+      },
+      "id": "send-completion-notification",
+      "name": "Send Completion Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2220,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credentials",
+          "name": "SMTP Email"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Read Input Sheet": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Rows": {
+      "main": [
+        [
+          {
+            "node": "SplitInBatches 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SplitInBatches 1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Worker Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Worker Request": {
+      "main": [
+        [
+          {
+            "node": "IF Success/Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Success/Error": {
+      "main": [
+        [
+          {
+            "node": "Update Success Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Error Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Success Results": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Error Results": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay": {
+      "main": [
+        [
+          {
+            "node": "Log Progress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Progress": {
+      "main": [
+        [
+          {
+            "node": "Check Batch Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Batch Complete": {
+      "main": [
+        [
+          {
+            "node": "SplitInBatches 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Completion Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": {
+      "enabled": false
+    }
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "your-n8n-instance-id"
+  },
+  "id": "wordpress-auto-tagging-optimized-workflow",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "wordpress-automation-optimized",
+      "name": "WordPress Automation Optimized"
+    },
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "cloudflare-worker",
+      "name": "Cloudflare Worker"
+    }
+  ]
+}
