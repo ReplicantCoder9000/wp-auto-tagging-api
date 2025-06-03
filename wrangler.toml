@@ -103,3 +103,9 @@ CIRCUIT_BREAKER_THRESHOLD = "4"     # Medium threshold for staging
 CIRCUIT_BREAKER_TIMEOUT = "45000"   # Medium timeout for staging
 MAX_RETRY_DELAY = "7500"           # Medium max delay for staging
 INITIAL_RETRY_DELAY = "750"        # Medium initial delay for staging
+# =============================================================================
+# OBSERVABILITY CONFIGURATION
+# =============================================================================
+# Enable logging for better monitoring and debugging
+[observability.logs]
+enabled = true
